@@ -1,0 +1,18 @@
+# Ignore Emscripten SDK download folder
+emsdk/
+
+# Ignore local browser test files and profiles
+temp_chrome_profile/
+temp_edge_profile/
+chrome_debug.log
+solved_maze.png
+solved_maze_temp.png
+
+# Node / Scratch files (if any)
+scratch/
+node_modules/
+package-lock.json
+
+# OS specific files
+.DS_Store
+Thumbs.db
