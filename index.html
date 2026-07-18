@@ -5,7 +5,421 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Maze-Solving Robot Simulator - WebAssembly & C++</title>
     <meta name="description" content="An interactive grid-maze simulator for an autonomous robot using recursive backtracking in C++ compiled to WebAssembly.">
-    <link rel="stylesheet" href="style.css">
+    <style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --bg-color: #080c14;
+    --card-bg: rgba(13, 20, 38, 0.65);
+    --border-color: rgba(255, 255, 255, 0.08);
+    --border-active: rgba(56, 189, 248, 0.4);
+    
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    
+    --primary: #0ea5e9;
+    --primary-glow: rgba(14, 165, 233, 0.35);
+    --success: #10b981;
+    --success-glow: rgba(16, 185, 129, 0.35);
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    
+    --wall-color: #1e293b;
+    --grid-bg: #0d1527;
+    --grid-line: #1e2942;
+    
+    --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-color);
+    background-image: 
+        radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.1) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.08) 0px, transparent 50%);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+}
+
+/* Header Component */
+header {
+    background: rgba(8, 12, 20, 0.8);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border-color);
+    padding: 1.25rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.logo-icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    background: linear-gradient(135deg, var(--primary), #6366f1);
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 15px var(--primary-glow);
+}
+
+.logo-icon svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: white;
+}
+
+.logo-text h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    background: linear-gradient(to right, #ffffff, #94a3b8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.logo-text p {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.badge {
+    background: rgba(14, 165, 233, 0.1);
+    border: 1px solid rgba(14, 165, 233, 0.2);
+    color: var(--primary);
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Main Layout */
+main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    max-width: 1600px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+@media (max-width: 1024px) {
+    main {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Sidebar and Cards */
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.card {
+    background: var(--card-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    transition: var(--transition);
+}
+
+.card:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.75rem;
+}
+
+.card-title svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: var(--primary);
+}
+
+/* UI Controls */
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.input-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.input-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    display: flex;
+    justify-content: space-between;
+}
+
+.input-val {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0.75rem 1.25rem;
+    border-radius: 0.6rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: var(--transition);
+    user-select: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary), #0284c7);
+    color: white;
+    box-shadow: 0 4px 12px var(--primary-glow);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px var(--primary-glow);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-primary:disabled {
+    background: #1e293b;
+    color: var(--text-muted);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-danger {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+}
+
+.btn-danger:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+.button-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+}
+
+.button-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+/* Custom Range Input */
+input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    background: #1e293b;
+    border-radius: 3px;
+    outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+    box-shadow: 0 0 10px var(--primary-glow);
+    transition: var(--transition);
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+/* Legend items */
+.legend {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.legend-color {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 0.3rem;
+    border: 1px solid var(--border-color);
+}
+
+.legend-empty { background-color: var(--grid-bg); border-color: var(--grid-line); }
+.legend-wall { background-color: var(--wall-color); }
+.legend-visited { background-color: rgba(20, 184, 166, 0.4); border-color: rgba(20, 184, 166, 0.8); }
+.legend-deadend { background-color: rgba(239, 68, 68, 0.3); border-color: rgba(239, 68, 68, 0.6); }
+.legend-path { background-color: rgba(16, 185, 129, 0.3); border-color: var(--success); }
+
+/* Simulation Area */
+.canvas-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    height: 100%;
+}
+
+.canvas-wrapper {
+    flex: 1;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    min-height: 450px;
+    overflow: auto;
+}
+
+canvas {
+    border-radius: 0.5rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    background-color: var(--grid-bg);
+}
+
+/* Stats dashboard */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 1rem;
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.stat-val {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.stat-val.highlight {
+    color: var(--primary);
+}
+
+/* Instructions card */
+.guide-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    padding-left: 1rem;
+}
+
+.guide-list li {
+    margin-bottom: 0.25rem;
+}
+
+/* Footer */
+footer {
+    border-top: 1px solid var(--border-color);
+    padding: 1.5rem;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: auto;
+}
+
+footer a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+footer a:hover {
+    text-decoration: underline;
+}
+    </style>
 </head>
 <body>
 
@@ -68,7 +482,6 @@
                         <div class="input-label">
                             <span>Grid Dimensions</span>
                         </div>
-                        <!-- Style-matched Select Dropdown -->
                         <select id="grid-size" style="width: 100%; background: #131a2e; border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.6rem; border-radius: 0.5rem; outline: none; font-family: var(--font-sans);">
                             <option value="15">15 x 15 (Small)</option>
                             <option value="21" selected>21 x 21 (Medium)</option>
@@ -169,8 +582,592 @@
         <p>Developed with WebAssembly & Emscripten C++ Engine. Source code is open source.</p>
     </footer>
 
-    <!-- Scripts: app.js defines the Module config, and maze_solver.js loads/runs it -->
-    <script src="app.js"></script>
+    <!-- Scripts: Inline logic handles all Canvas operations, state, and WASM interface -->
+    <script>
+let rows = 21;
+let cols = 21;
+let grid = [];
+let exploredStates = [];
+let finalPathCells = new Set();
+
+let startPos = { row: 1, col: 1 };
+let goalPos = { row: 19, col: 19 };
+
+let isPainting = false;
+let paintMode = 1;
+let activeDragging = null;
+
+let isSimulating = false;
+let simulationEvents = [];
+let eventIndex = 0;
+let finalPathPoints = [];
+let simulationSpeed = 50;
+let timerId = null;
+
+let robotVisual = { x: 1, y: 1 };
+let robotTarget = { x: 1, y: 1 };
+let isRobotMoving = false;
+
+let canvas, ctx;
+let cellSize = 24;
+
+const startBtn = document.getElementById('start-btn');
+const generateBtn = document.getElementById('generate-btn');
+const clearBtn = document.getElementById('clear-btn');
+const speedSlider = document.getElementById('speed-slider');
+const speedVal = document.getElementById('speed-val');
+const gridSizeSelect = document.getElementById('grid-size');
+const statusText = document.getElementById('status-text');
+const exploredCountText = document.getElementById('explored-count');
+const pathLengthText = document.getElementById('path-length');
+
+var Module = {
+    onRuntimeInitialized: function() {
+        console.log("WebAssembly runtime initialized successfully.");
+        initApp();
+    }
+};
+
+function initApp() {
+    canvas = document.getElementById('maze-canvas');
+    ctx = canvas.getContext('2d');
+    
+    canvas.addEventListener('mousedown', handleMouseDown);
+    canvas.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    
+    startBtn.addEventListener('click', startSimulation);
+    generateBtn.addEventListener('click', generateRandomMaze);
+    clearBtn.addEventListener('click', clearBoard);
+    
+    speedSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value);
+        speedVal.textContent = val + '%';
+        simulationSpeed = Math.max(1, Math.floor(200 - (val / 100) * 195));
+    });
+    
+    gridSizeSelect.addEventListener('change', (e) => {
+        const size = parseInt(e.target.value);
+        resizeGrid(size);
+    });
+    
+    resizeGrid(21);
+    requestAnimationFrame(renderLoop);
+}
+
+function resizeGrid(size) {
+    if (isSimulating) stopSimulation();
+    
+    rows = size;
+    cols = size;
+    
+    startPos = { row: 1, col: 1 };
+    goalPos = { row: rows - 2, col: cols - 2 };
+    
+    robotVisual = { x: startPos.col, y: startPos.row };
+    robotTarget = { x: startPos.col, y: startPos.row };
+    
+    grid = [];
+    exploredStates = [];
+    finalPathCells.clear();
+    
+    for (let r = 0; r < rows; r++) {
+        let gridRow = [];
+        let stateRow = [];
+        for (let c = 0; c < cols; c++) {
+            if (r === 0 || r === rows - 1 || c === 0 || c === cols - 1) {
+                gridRow.push(1);
+            } else {
+                gridRow.push(0);
+            }
+            stateRow.push(0);
+        }
+        grid.push(gridRow);
+        exploredStates.push(stateRow);
+    }
+    
+    adjustCanvasSize();
+    updateStats('Idle', 0, 0);
+}
+
+function adjustCanvasSize() {
+    const parent = canvas.parentElement;
+    const maxDim = Math.min(parent.clientWidth - 40, parent.clientHeight - 40, 600);
+    cellSize = Math.floor(maxDim / Math.max(rows, cols));
+    canvas.width = cols * cellSize;
+    canvas.height = rows * cellSize;
+}
+
+function renderLoop() {
+    drawGrid();
+    
+    const lerpFactor = 0.25;
+    robotVisual.x += (robotTarget.x - robotVisual.x) * lerpFactor;
+    robotVisual.y += (robotTarget.y - robotVisual.y) * lerpFactor;
+    
+    drawRobot();
+    requestAnimationFrame(renderLoop);
+}
+
+function drawGrid() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            const x = c * cellSize;
+            const y = r * cellSize;
+            
+            if (grid[r][c] === 1) {
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(x, y, cellSize, cellSize);
+                ctx.strokeStyle = '#334155';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x + 0.5, y + 0.5, cellSize - 1, cellSize - 1);
+            } else {
+                ctx.fillStyle = '#0d1527';
+                ctx.fillRect(x, y, cellSize, cellSize);
+                ctx.strokeStyle = '#1e2942';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x + 0.5, y + 0.5, cellSize - 1, cellSize - 1);
+                
+                const state = exploredStates[r][c];
+                if (state === 1) {
+                    ctx.fillStyle = 'rgba(20, 184, 166, 0.25)';
+                    ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2);
+                    ctx.strokeStyle = 'rgba(20, 184, 166, 0.4)';
+                    ctx.strokeRect(x + 1.5, y + 1.5, cellSize - 3, cellSize - 3);
+                } else if (state === 2) {
+                    ctx.fillStyle = 'rgba(239, 68, 68, 0.2)';
+                    ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2);
+                }
+            }
+        }
+    }
+    
+    if (finalPathCells.size > 0 && finalPathPoints.length > 0) {
+        ctx.beginPath();
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = Math.max(3, cellSize * 0.15);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.shadowColor = 'rgba(16, 185, 129, 0.6)';
+        ctx.shadowBlur = 10;
+        
+        const startX = (finalPathPoints[0].col + 0.5) * cellSize;
+        const startY = (finalPathPoints[0].row + 0.5) * cellSize;
+        ctx.moveTo(startX, startY);
+        
+        for (let i = 1; i < finalPathPoints.length; i++) {
+            const px = (finalPathPoints[i].col + 0.5) * cellSize;
+            const py = (finalPathPoints[i].row + 0.5) * cellSize;
+            ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+    }
+    
+    drawMarker(startPos.col, startPos.row, '#10b981', 'S');
+    drawMarker(goalPos.col, goalPos.row, '#f43f5e', 'G');
+}
+
+function drawMarker(c, r, color, label) {
+    const x = c * cellSize;
+    const y = r * cellSize;
+    const padding = cellSize * 0.15;
+    
+    ctx.beginPath();
+    ctx.arc(x + cellSize/2, y + cellSize/2, cellSize/2 - padding, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    
+    ctx.strokeStyle = '#080c14';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${Math.floor(cellSize * 0.45)}px var(--font-sans)`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, x + cellSize/2, y + cellSize/2);
+}
+
+function drawRobot() {
+    const x = (robotVisual.x + 0.5) * cellSize;
+    const y = (robotVisual.y + 0.5) * cellSize;
+    const radius = cellSize * 0.35;
+    
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 2;
+    
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    const grad = ctx.createRadialGradient(x - radius/3, y - radius/3, radius*0.1, x, y, radius);
+    grad.addColorStop(0, '#f8fafc');
+    grad.addColorStop(0.4, '#38bdf8');
+    grad.addColorStop(1, '#0284c7');
+    ctx.fillStyle = grad;
+    ctx.fill();
+    
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+    
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    
+    ctx.beginPath();
+    ctx.arc(x, y, radius * 0.3, 0, Math.PI * 2);
+    ctx.fillStyle = isSimulating ? '#22c55e' : '#e2e8f0';
+    if (isSimulating) {
+        ctx.shadowColor = '#22c55e';
+        ctx.shadowBlur = 5;
+    }
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    
+    const dx = robotTarget.x - robotVisual.x;
+    const dy = robotTarget.y - robotVisual.y;
+    let angle = 0;
+    if (dx !== 0 || dy !== 0) {
+        angle = Math.atan2(dy, dx);
+    }
+    
+    ctx.beginPath();
+    ctx.arc(x + Math.cos(angle) * radius * 0.6, y + Math.sin(angle) * radius * 0.6, radius * 0.15, 0, Math.PI * 2);
+    ctx.fillStyle = '#ef4444';
+    ctx.fill();
+}
+
+function getCellFromEvent(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    const col = Math.floor(x / cellSize);
+    const row = Math.floor(y / cellSize);
+    
+    return { row, col };
+}
+
+function handleMouseDown(e) {
+    if (isSimulating) return;
+    
+    const { row, col } = getCellFromEvent(e);
+    if (row < 0 || row >= rows || col < 0 || col >= cols) return;
+    
+    if (row === startPos.row && col === startPos.col) {
+        activeDragging = 'start';
+        return;
+    }
+    if (row === goalPos.row && col === goalPos.col) {
+        activeDragging = 'goal';
+        return;
+    }
+    
+    if (row === 0 || row === rows - 1 || col === 0 || col === cols - 1) return;
+    
+    isPainting = true;
+    paintMode = grid[row][col] === 1 ? 0 : 1;
+    toggleWall(row, col, paintMode);
+}
+
+function handleMouseMove(e) {
+    if (isSimulating) return;
+    
+    const { row, col } = getCellFromEvent(e);
+    if (row < 0 || row >= rows || col < 0 || col >= cols) return;
+    
+    if (activeDragging) {
+        if (row > 0 && row < rows - 1 && col > 0 && col < cols - 1 && grid[row][col] !== 1) {
+            if (activeDragging === 'start' && (row !== goalPos.row || col !== goalPos.col)) {
+                startPos = { row, col };
+                robotVisual = { x: col, y: row };
+                robotTarget = { x: col, y: row };
+            } else if (activeDragging === 'goal' && (row !== startPos.row || col !== startPos.col)) {
+                goalPos = { row, col };
+            }
+        }
+        return;
+    }
+    
+    if (!isPainting) return;
+    if (row === 0 || row === rows - 1 || col === 0 || col === cols - 1) return;
+    if ((row === startPos.row && col === startPos.col) || (row === goalPos.row && col === goalPos.col)) return;
+    
+    toggleWall(row, col, paintMode);
+}
+
+function handleMouseUp() {
+    isPainting = false;
+    activeDragging = null;
+}
+
+function toggleWall(r, c, val) {
+    grid[r][c] = val;
+    exploredStates[r][c] = 0;
+    finalPathCells.clear();
+    finalPathPoints = [];
+    updateStats('Idle', 0, 0);
+}
+
+function clearBoard() {
+    if (isSimulating) stopSimulation();
+    
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            if (r === 0 || r === rows - 1 || c === 0 || c === cols - 1) {
+                grid[r][c] = 1;
+            } else {
+                grid[r][c] = 0;
+            }
+            exploredStates[r][c] = 0;
+        }
+    }
+    
+    finalPathCells.clear();
+    finalPathPoints = [];
+    robotVisual = { x: startPos.col, y: startPos.row };
+    robotTarget = { x: startPos.col, y: startPos.row };
+    updateStats('Idle', 0, 0);
+}
+
+function generateRandomMaze() {
+    if (isSimulating) stopSimulation();
+    
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            grid[r][c] = 1;
+            exploredStates[r][c] = 0;
+        }
+    }
+    finalPathCells.clear();
+    finalPathPoints = [];
+    
+    let stack = [];
+    let current = { row: 1, col: 1 };
+    grid[current.row][current.col] = 0;
+    stack.push(current);
+    
+    let visitedCells = new Set();
+    visitedCells.add(`${current.row},${current.col}`);
+    
+    while (stack.length > 0) {
+        let curr = stack[stack.length - 1];
+        
+        let neighbors = [];
+        const directions = [
+            { r: -2, c: 0 },
+            { r: 2, c: 0 },
+            { r: 0, c: -2 },
+            { r: 0, c: 2 }
+        ];
+        
+        for (let dir of directions) {
+            let nr = curr.row + dir.r;
+            let nc = curr.col + dir.c;
+            
+            if (nr > 0 && nr < rows - 1 && nc > 0 && nc < cols - 1) {
+                if (!visitedCells.has(`${nr},${nc}`)) {
+                    neighbors.push({ row: nr, col: nc, dirR: dir.r / 2, dirC: dir.c / 2 });
+                }
+            }
+        }
+        
+        if (neighbors.length > 0) {
+            let next = neighbors[Math.floor(Math.random() * neighbors.length)];
+            grid[curr.row + next.dirR][curr.col + next.dirC] = 0;
+            grid[next.row][next.col] = 0;
+            visitedCells.add(`${next.row},${next.col}`);
+            stack.push({ row: next.row, col: next.col });
+        } else {
+            stack.pop();
+        }
+    }
+    
+    startPos = { row: 1, col: 1 };
+    goalPos = { row: rows - 2, col: cols - 2 };
+    
+    grid[startPos.row][startPos.col] = 0;
+    grid[goalPos.row][goalPos.col] = 0;
+    
+    if (grid[startPos.row + 1][startPos.col] === 1 && grid[startPos.row][startPos.col + 1] === 1) {
+        grid[startPos.row + 1][startPos.col] = 0;
+    }
+    if (grid[goalPos.row - 1][goalPos.col] === 1 && grid[goalPos.row][goalPos.col - 1] === 1) {
+        grid[goalPos.row - 1][goalPos.col] = 0;
+    }
+    
+    robotVisual = { x: startPos.col, y: startPos.row };
+    robotTarget = { x: startPos.col, y: startPos.row };
+    updateStats('Idle', 0, 0);
+}
+
+function startSimulation() {
+    if (isSimulating) {
+        stopSimulation();
+        return;
+    }
+    
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            exploredStates[r][c] = 0;
+        }
+    }
+    finalPathCells.clear();
+    finalPathPoints = [];
+    
+    robotVisual = { x: startPos.col, y: startPos.row };
+    robotTarget = { x: startPos.col, y: startPos.row };
+    
+    Module._init_maze(cols, rows);
+    
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            if (grid[r][c] === 1) {
+                Module._set_wall(r, c, 1);
+            }
+        }
+    }
+    
+    updateStats('Solving...', 0, 0);
+    const startSolveTime = performance.now();
+    const pathFound = Module._solve_maze(startPos.row, startPos.col, goalPos.row, goalPos.col);
+    const solveTime = performance.now() - startSolveTime;
+    
+    const eventCount = Module._get_event_count();
+    simulationEvents = [];
+    for (let i = 0; i < eventCount; i++) {
+        simulationEvents.push({
+            row: Module._get_event_row(i),
+            col: Module._get_event_col(i),
+            type: Module._get_event_type(i)
+        });
+    }
+    
+    finalPathPoints = [];
+    const pathLength = Module._get_path_length();
+    for (let i = 0; i < pathLength; i++) {
+        finalPathPoints.push({
+            row: Module._get_path_row(i),
+            col: Module._get_path_col(i)
+        });
+    }
+    
+    if (simulationEvents.length === 0) {
+        updateStats('Blocked (No Path)', 0, 0);
+        return;
+    }
+    
+    isSimulating = true;
+    startBtn.textContent = 'Stop Simulation';
+    startBtn.className = 'btn btn-danger';
+    generateBtn.disabled = true;
+    clearBtn.disabled = true;
+    gridSizeSelect.disabled = true;
+    
+    eventIndex = 0;
+    isRobotMoving = true;
+    runSimulationStep();
+}
+
+function runSimulationStep() {
+    if (!isSimulating) return;
+    
+    if (eventIndex >= simulationEvents.length) {
+        finishSimulation();
+        return;
+    }
+    
+    const ev = simulationEvents[eventIndex];
+    exploredStates[ev.row][ev.col] = ev.type === 0 ? 1 : 2;
+    robotTarget = { x: ev.col, y: ev.row };
+    
+    let exploredCount = 0;
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            if (exploredStates[r][c] > 0) exploredCount++;
+        }
+    }
+    
+    updateStats('Solving...', exploredCount, 0);
+    eventIndex++;
+    timerId = setTimeout(runSimulationStep, simulationSpeed);
+}
+
+function finishSimulation() {
+    stopTimers();
+    isSimulating = false;
+    isRobotMoving = false;
+    
+    if (finalPathPoints.length > 0) {
+        const lastPt = finalPathPoints[finalPathPoints.length - 1];
+        robotTarget = { x: lastPt.col, y: lastPt.row };
+        
+        for (let pt of finalPathPoints) {
+            finalPathCells.add(`${pt.row},${pt.col}`);
+        }
+        
+        let exploredCount = 0;
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                if (exploredStates[r][c] > 0) exploredCount++;
+            }
+        }
+        
+        updateStats('Solved', exploredCount, finalPathPoints.length);
+    } else {
+        updateStats('Blocked (No Path)', eventIndex, 0);
+    }
+    
+    resetUIControls();
+}
+
+function stopSimulation() {
+    stopTimers();
+    isSimulating = false;
+    isRobotMoving = false;
+    
+    robotTarget = { x: startPos.col, y: startPos.row };
+    robotVisual = { x: startPos.col, y: startPos.row };
+    
+    resetUIControls();
+    updateStats('Idle', 0, 0);
+}
+
+function stopTimers() {
+    if (timerId) {
+        clearTimeout(timerId);
+        timerId = null;
+    }
+}
+
+function resetUIControls() {
+    startBtn.textContent = 'Start Simulation';
+    startBtn.className = 'btn btn-primary';
+    generateBtn.disabled = false;
+    clearBtn.disabled = false;
+    gridSizeSelect.disabled = false;
+}
+
+function updateStats(state, explored, pathLen) {
+    statusText.textContent = state;
+    exploredCountText.textContent = explored;
+    pathLengthText.textContent = pathLen;
+    
+    statusText.style.color = '';
+    if (state === 'Solved') {
+        statusText.style.color = 'var(--success)';
+    } else if (state.includes('Blocked')) {
+        statusText.style.color = 'var(--danger)';
+    } else if (state === 'Solving...') {
+        statusText.style.color = 'var(--primary)';
+    }
+}
+    </script>
     <script src="maze_solver.js"></script>
 </body>
 </html>
